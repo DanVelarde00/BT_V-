@@ -1,1 +1,0 @@
-#smnaller requirments that might change frequently so docker dosent spend an hour rinstalling everything on each new build

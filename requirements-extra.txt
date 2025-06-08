@@ -1,0 +1,4 @@
+#smaller libraries docker can reinstall instead of just downloading entire requirements
+fastapi
+uvicorn
+requests
