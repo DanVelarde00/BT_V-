@@ -12,9 +12,13 @@ while True:
         )
         data = resp.json()
         print("Llama3:", data.get("response", "(no response)"))
+        
+        #Uncomment the following lines if you want to see similar past entries
+        """
         if data.get("similar"):
             print("Similar past entries:")
             for s in data["similar"]:
                 print("-", s)
+        """
     except Exception as e:
         print("Error:", e)
