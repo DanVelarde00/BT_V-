@@ -1,4 +1,3 @@
-
 services:
   weaviate:
     image: semitechnologies/weaviate:1.20.1
@@ -13,6 +12,8 @@ services:
       PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
       CLUSTER_HOSTNAME: "node1"
     restart: on-failure
+    networks:
+      - app-network
 
   ollama:
     image: ollama/ollama:latest
@@ -25,6 +26,8 @@ services:
       OLLAMA_HOST: ollama
     command: ["ollama", "serve"]
     restart: unless-stopped
+    networks:
+      - app-network
 
   embedder:
     build:
@@ -33,6 +36,8 @@ services:
     ports:
       - "5000:5000"
     restart: unless-stopped
+    networks:
+      - app-network
 
   init-schema:
     build:
@@ -41,7 +46,13 @@ services:
     depends_on:
       - weaviate
     restart: "no"
+    networks:
+      - app-network
 
 volumes:
   weaviate_data:
   ollama_models:
+
+networks:
+  app-network:
+    driver: bridge

@@ -7,7 +7,7 @@ from typing import List
 app = FastAPI()
 
 weaviate_client = Client("http://weaviate:8080")
-embedding_model = SentenceTransformer("BAAI/bge-base-en-v1.5")
+embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
 
 class EmbedRequest(BaseModel):
     text: str

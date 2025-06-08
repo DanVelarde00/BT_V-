@@ -7,7 +7,7 @@ SCHEMA = {
     "description": "A document with text and embedding",
     "properties": [
         {"name": "text", "dataType": ["text"]},
-        {"name": "embedding", "dataType": ["number"], "description": "Vector embedding"}
+        {"name": "embedding", "dataType": ["number"], "description": "Vector embedding", "indexConfig": {"similarityFunction": "cosine"}}
     ]
 }
 
