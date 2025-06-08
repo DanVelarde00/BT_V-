@@ -24,7 +24,8 @@ services:
       - ollama_models:/models
     environment:
       OLLAMA_HOST: ollama
-    command: ["ollama", "serve"]
+    command: >
+      sh -c "ollama pull llama3 && ollama serve"
     restart: unless-stopped
     networks:
       - app-network
