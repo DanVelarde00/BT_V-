@@ -1,0 +1,47 @@
+
+services:
+  weaviate:
+    image: semitechnologies/weaviate:1.20.1
+    ports:
+      - "8080:8080"
+      - "50051:50051"
+    volumes:
+      - weaviate_data:/var/lib/weaviate
+    environment:
+      QUERY_DEFAULTS_LIMIT: "25"
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
+      PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
+      CLUSTER_HOSTNAME: "node1"
+    restart: on-failure
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_models:/models
+    environment:
+      OLLAMA_HOST: ollama
+    command: ["ollama", "serve"]
+    restart: unless-stopped
+
+  embedder:
+    build:
+      context: .
+      dockerfile: Dockerfile.serve
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
+
+  init-schema:
+    build:
+      context: .
+      dockerfile: Dockerfile.init-schema
+    depends_on:
+      - weaviate
+    restart: "no"
+
+volumes:
+  weaviate_data:
+  ollama_models:
