@@ -50,6 +50,16 @@ services:
     networks:
       - app-network
 
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.app
+    ports:
+      - "5001:5000"
+    restart: unless-stopped
+    networks:
+      - app-network
+
 volumes:
   weaviate_data:
   ollama_models:
