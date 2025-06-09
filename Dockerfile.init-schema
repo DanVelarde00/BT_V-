@@ -2,9 +2,12 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY requirements.txt .
-COPY init_weaviate_schema.py .
+COPY requirements-base.txt .
+RUN pip install --no-cache-dir -r requirements-base.txt
 
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements-extra.txt .
+RUN pip install --no-cache-dir -r requirements-extra.txt
+
+COPY init_weaviate_schema.py .
 
 CMD ["python", "init_weaviate_schema.py"]

@@ -29,12 +29,14 @@ def wait_for_weaviate():
     return False
 
 def create_schema():
-    r = requests.post(f"{WEAVIATE_URL}/schema/classes", json=SCHEMA)
+    payload = {"classes": [SCHEMA]}
+    r = requests.post(f"{WEAVIATE_URL}/schema", json=payload)
     if r.status_code in (200, 409, 422):
         print("Schema created or already exists.")
     else:
         print(f"Failed to create schema: {r.status_code} {r.text}")
 
+        
 if __name__ == "__main__":
     if wait_for_weaviate():
         create_schema()

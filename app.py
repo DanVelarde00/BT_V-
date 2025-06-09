@@ -1,5 +1,6 @@
 from fastapi import FastAPI
-from weaviate import Client
+from weaviate import WeaviateClient
+from weaviate.connect import ConnectionParams
 from sentence_transformers import SentenceTransformer
 from pydantic import BaseModel
 from typing import List
@@ -7,8 +8,10 @@ import requests
 
 app = FastAPI()
 
-weaviate_client = Client("http://weaviate:8080")
+connection_params = ConnectionParams.from_url("http://weaviate:8080", grpc_port=50051)
+weaviate_client = WeaviateClient(connection_params=connection_params)
 embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
+
 OLLAMA_URL = "http://ollama:11434/api/generate"
 LLAMA3_MODEL = "llama3"
 
@@ -26,7 +29,9 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     response: str
     similar: List[str]
-
+class TextRequest(BaseModel):
+    text: str
+    
 @app.post("/embed")
 def embed_text(request: EmbedRequest):
     embedding = embedding_model.encode(request.text).tolist()
@@ -34,12 +39,11 @@ def embed_text(request: EmbedRequest):
 
 @app.post("/store")
 def store_document(request: StoreRequest):
-    weaviate_client.data_object.create(
+    weaviate_client.collections.get("Document").data.insert(
         {
             "content": request.content,
             "embedding": request.embedding
-        },
-        "Document"
+        }
     )
     return {"status": "success"}
 
@@ -51,9 +55,12 @@ def chat(request: ChatRequest):
     # 2. Recall similar past prompts/responses from Weaviate
     similar = []
     try:
-        result = weaviate_client.query.get("Document", ["content"]).with_near_vector({"vector": prompt_embedding, "certainty": 0.7}).with_limit(request.top_k).do()
-        if result and "data" in result and "Get" in result["data"] and "Document" in result["data"]["Get"]:
-            similar = [doc["content"] for doc in result["data"]["Get"]["Document"]]
+        results = weaviate_client.collections.get("Document").query.near_vector(
+            vector=prompt_embedding,
+            limit=request.top_k
+        )
+        if results and results.objects:
+            similar = [obj.properties["content"] for obj in results.objects if "content" in obj.properties]
     except Exception:
         pass
 
@@ -64,9 +71,8 @@ def chat(request: ChatRequest):
 
     # 4. Embed and store prompt/response in Weaviate
     try:
-        weaviate_client.data_object.create(
-            {"content": f"Prompt: {request.prompt}\nResponse: {response_text}", "embedding": embedding_model.encode(request.prompt + response_text).tolist()},
-            "Document"
+        weaviate_client.collections.get("Document").data.insert(
+            {"content": f"Prompt: {request.prompt}\nResponse: {response_text}", "embedding": embedding_model.encode(request.prompt + response_text).tolist()}
         )
     except Exception:
         pass

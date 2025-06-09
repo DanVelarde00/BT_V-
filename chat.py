@@ -1,24 +1,17 @@
 import requests
 
-print("Type your prompt and press Enter. Leave blank and press Enter to exit.")
+print("Type your text and press Enter. Leave blank and press Enter to exit.")
 while True:
     prompt = input("You: ")
     if not prompt.strip():
         break
+    #problem wwith ports 
     try:
         resp = requests.post(
-            "http://localhost:5000/chat",
-            json={"prompt": prompt, "top_k": 3}
+            "http://localhost:5000/embed",
+            json={"text": prompt}
         )
         data = resp.json()
-        print("Llama3:", data.get("response", "(no response)"))
-        
-        #Uncomment the following lines if you want to see similar past entries
-        """
-        if data.get("similar"):
-            print("Similar past entries:")
-            for s in data["similar"]:
-                print("-", s)
-        """
+        print("Embedding:", data.get("embedding", "(no response)"))
     except Exception as e:
-        print("Error:", e)
+        print("❌ Error:", e)
