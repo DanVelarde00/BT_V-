@@ -6,7 +6,7 @@ while True:
     if not prompt.strip():
         break
     try:
-        # Get embedding from embedder
+        # Get embedding from app
         resp = requests.post(
             "http://localhost:5000/embed",
             json={"text": prompt}
@@ -15,7 +15,7 @@ while True:
         print("Embedding:", data.get("embedding", "(no response)"))
         # Get LLM response from app
         chat_resp = requests.post(
-            "http://localhost:5001/chat", 
+            "http://localhost:5000/chat",
             json={"prompt": prompt, "top_k": 3}
         )
         chat_data = chat_resp.json()

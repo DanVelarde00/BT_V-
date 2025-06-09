@@ -3,17 +3,19 @@ import requests
 
 WEAVIATE_URL = "http://weaviate:8080/v1"
 SCHEMA = {
-    "class": "Document",
-    "description": "A document with text and embedding",
+    "class": "Message",
+    "description": "A message with text, embedding, role, and timestamp",
     "vectorizer": "none",
     "vectorIndexType": "hnsw",
     "properties": [
-        {"name": "content", "dataType": ["text"]},
+        {"name": "text", "dataType": ["text"]},
         {
             "name": "embedding",
             "dataType": ["number"],
             "description": "Vector embedding"
-        }
+        },
+        {"name": "role", "dataType": ["text"]},
+        {"name": "timestamp", "dataType": ["date"]}
     ]
 }
 

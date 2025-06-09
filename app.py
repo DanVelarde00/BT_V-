@@ -1,83 +1,79 @@
 from fastapi import FastAPI
-from weaviate import WeaviateClient
-from weaviate.connect import ConnectionParams
-from sentence_transformers import SentenceTransformer
 from pydantic import BaseModel
-from typing import List
 import requests
+from sentence_transformers import SentenceTransformer
+import weaviate
+from weaviate.util import generate_uuid5
+import json
+from datetime import datetime
 
-app = FastAPI()
-
-connection_params = ConnectionParams.from_url("http://weaviate:8080", grpc_port=50051)
-weaviate_client = WeaviateClient(connection_params=connection_params)
-embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
-
+# Constants
+LLAMA3_MODEL = "llama3:instruct"
 OLLAMA_URL = "http://ollama:11434/api/generate"
-LLAMA3_MODEL = "llama3"
+WEAVIATE_URL = "http://weaviate:8080"
 
-class EmbedRequest(BaseModel):
-    text: str
+# FastAPI App
+app = FastAPI()
+model = SentenceTransformer("all-MiniLM-L6-v2")
 
-class StoreRequest(BaseModel):
-    content: str
-    embedding: List[float]
+# Weaviate client
+client = weaviate.Client(WEAVIATE_URL)
 
+# Request model
 class ChatRequest(BaseModel):
     prompt: str
-    top_k: int = 3  # Number of similar past prompts to recall
+    top_k: int = 3
 
-class ChatResponse(BaseModel):
-    response: str
-    similar: List[str]
-class TextRequest(BaseModel):
-    text: str
-    
-@app.post("/embed")
-def embed_text(request: EmbedRequest):
-    embedding = embedding_model.encode(request.text).tolist()
-    return {"embedding": embedding}
-
-@app.post("/store")
-def store_document(request: StoreRequest):
-    weaviate_client.collections.get("Document").data.insert(
-        {
-            "content": request.content,
-            "embedding": request.embedding
-        }
-    )
-    return {"status": "success"}
-
-@app.post("/chat", response_model=ChatResponse)
+# Endpoint
+@app.post("/chat")
 def chat(request: ChatRequest):
-    # 1. Embed the prompt
-    prompt_embedding = embedding_model.encode(request.prompt).tolist()
+    # Embed the prompt
+    embedding = model.encode(request.prompt).tolist()
+    print("📌 Prompt:", request.prompt)
+    print("🔢 Embedding:", embedding[:5], "...")  # Show only first 5 for brevity
 
-    # 2. Recall similar past prompts/responses from Weaviate
-    similar = []
+    # Store in Weaviate
+    client.data_object.create(
+        {"text": request.prompt, "embedding": embedding, "timestamp": datetime.utcnow().isoformat(), "role": "user"},
+        class_name="Message",
+        uuid=generate_uuid5(request.prompt)
+    )
+
+    # Search similar
+    response = client.query.get("Message", ["text"]) \
+        .with_near_vector({"vector": embedding}) \
+        .with_limit(request.top_k) \
+        .do()
+
+    matches = response.get("data", {}).get("Get", {}).get("Message", [])
+    context = "\n".join([m["text"] for m in matches])
+    print("📚 Retrieved context:", context)
+
+    # Ask LLM
+    payload = {
+        "model": LLAMA3_MODEL,
+        "prompt": f"{context}\n\n{request.prompt}",
+        "stream": False  # ✅ Required
+    }
+
     try:
-        results = weaviate_client.collections.get("Document").query.near_vector(
-            vector=prompt_embedding,
-            limit=request.top_k
-        )
-        if results and results.objects:
-            similar = [obj.properties["content"] for obj in results.objects if "content" in obj.properties]
-    except Exception:
-        pass
+        r = requests.post(OLLAMA_URL, json=payload)
+        if r.ok:
+            print("🧠 Raw LLM JSON:", r.json())
+            response_text = r.json().get("response", "(empty response field)")
+        else:
+            response_text = f"(LLM HTTP Error {r.status_code})"
+    except Exception as e:
+        response_text = f"(LLM error: {e})"
 
-    # 3. Send prompt to Llama 3 via Ollama
-    payload = {"model": LLAMA3_MODEL, "prompt": request.prompt}
-    r = requests.post(OLLAMA_URL, json=payload)
-    response_text = r.json().get("response", "") if r.ok else "(LLM error)"
-
-    # 4. Embed and store prompt/response in Weaviate
-    try:
-        weaviate_client.collections.get("Document").data.insert(
-            {"content": f"Prompt: {request.prompt}\nResponse: {response_text}", "embedding": embedding_model.encode(request.prompt + response_text).tolist()}
-        )
-    except Exception:
-        pass
-
-    return ChatResponse(response=response_text, similar=similar)
+    print("🤖 LLM Response:", response_text)
+    # Store assistant response
+    client.data_object.create(
+        {"text": response_text, "embedding": model.encode(response_text).tolist(), "timestamp": datetime.utcnow().isoformat(), "role": "assistant"},
+        class_name="Message",
+        uuid=generate_uuid5(response_text)
+    )
+    return {"response": response_text, "context": context}
 
 if __name__ == "__main__":
     import uvicorn
