@@ -10,7 +10,8 @@ from datetime import datetime
 # Constants
 LLAMA3_MODEL = "llama3:instruct"
 OLLAMA_URL = "http://ollama:11434/api/generate"
-WEAVIATE_URL = "http://weaviate:8080"
+import os
+WEAVIATE_URL = os.getenv("WEAVIATE_URL", "http://localhost:8080")
 
 # FastAPI App
 app = FastAPI()
