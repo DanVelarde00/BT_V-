@@ -15,7 +15,7 @@ while True:
         print("Embedding:", data.get("embedding", "(no response)"))
         # Get LLM response from app
         chat_resp = requests.post(
-            "http://localhost:5000/chat",
+            "http://localhost:5001/chat",
             json={"prompt": prompt, "top_k": 3}
         )
         chat_data = chat_resp.json()
