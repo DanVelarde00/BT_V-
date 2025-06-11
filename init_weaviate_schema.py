@@ -1,7 +1,7 @@
 import time
 import requests
 
-WEAVIATE_URL = "http://weaviate:8080/v1"
+WEAVIATE_URL = "http://localhost:8080/v1"
 SCHEMA = {
     "class": "Message",
     "description": "A message with text, embedding, role, and timestamp",

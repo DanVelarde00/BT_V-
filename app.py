@@ -16,8 +16,11 @@ WEAVIATE_URL = "http://weaviate:8080"
 app = FastAPI()
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
-# Weaviate client
-client = weaviate.Client(WEAVIATE_URL)
+# Weaviate client (handle both old and new weaviate-client versions)
+try:
+    client = weaviate.Client(url=WEAVIATE_URL)
+except TypeError:
+    client = weaviate.Client(WEAVIATE_URL)
 
 # Request model
 class ChatRequest(BaseModel):
